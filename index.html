@@ -374,7 +374,6 @@
     </div>
 
     <script>
-        // Mapeos JavaScript dinámicos
         let langFolderNames = {};
         let langPrettyNames = {};
 
@@ -427,22 +426,22 @@
         const modalBtnCancel = document.getElementById('modalBtnCancel');
         const modalBtnConfirm = document.getElementById('modalBtnConfirm');
 
-        // LECTURA DINÁMICA DEL ARCHIVO XML
-        async function loadLanguagesFromXML() {
+        // Cargar XML mediante JavaScript al iniciar
+        async function loadLanguagesXml() {
             try {
                 const response = await fetch('languages.xml');
                 if (!response.ok) throw new Error('No se pudo cargar languages.xml');
-                
-                const xmlText = await response.text();
+                const str = await response.text();
                 const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                const xmlDoc = parser.parseFromString(str, "text/xml");
 
+                // Limpiar selectores
                 langSource.innerHTML = '';
                 langTarget.innerHTML = '';
 
                 // Cargar Idiomas Origen
-                const sources = xmlDoc.querySelectorAll('source > language');
-                sources.forEach(lang => {
+                const sourceLangs = xmlDoc.querySelectorAll('source language');
+                sourceLangs.forEach(lang => {
                     const code = lang.getAttribute('code');
                     const text = lang.textContent;
                     const opt = document.createElement('option');
@@ -452,15 +451,15 @@
                     langSource.appendChild(opt);
                 });
 
-                // Cargar Idiomas Destino
-                const targets = xmlDoc.querySelectorAll('target > language');
-                targets.forEach(lang => {
+                // Cargar Idiomas Destino y Guardar Mapeos
+                const targetLangs = xmlDoc.querySelectorAll('target language');
+                targetLangs.forEach(lang => {
                     const code = lang.getAttribute('code');
                     const folder = lang.getAttribute('folder');
                     const text = lang.textContent;
 
                     langFolderNames[code] = folder;
-                    langPrettyNames[code] = folder.charAt(0).toUpperCase() + folder.slice(1).toLowerCase() + " Language Pack";
+                    langPrettyNames[code] = capitalizeFirst(folder) + " Language Pack";
 
                     const opt = document.createElement('option');
                     opt.value = code;
@@ -469,12 +468,21 @@
                     langTarget.appendChild(opt);
                 });
 
+                if (langPrettyNames['es']) {
+                    headerPackName.value = langPrettyNames['es'];
+                }
+
             } catch (err) {
-                console.error("Error al procesar el archivo XML de idiomas:", err);
+                console.warn("Aviso: No se pudo cargar languages.xml automáticamente. Se usarán valores predeterminados.", err);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadLanguagesFromXML);
+        function capitalizeFirst(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadLanguagesXml);
 
         function showCustomModal({ title = 'Atención', message = '', icon = 'fa-triangle-exclamation', color = 'amber', isConfirm = false }) {
             return new Promise((resolve) => {
