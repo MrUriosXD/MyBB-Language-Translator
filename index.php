@@ -1,0 +1,1340 @@
+<?php
+// Configuración de la ruta del XML externo
+$xmlPath = __DIR__ . '/languages.xml'; 
+
+$xmlLangs = null;
+if (file_exists($xmlPath)) {
+    $xmlLangs = simplexml_load_file($xmlPath);
+}
+
+// Mapeos para que JS los consuma
+$jsFolderNames = [];
+$jsPrettyNames = [];
+
+if ($xmlLangs && isset($xmlLangs->target)) {
+    foreach ($xmlLangs->target->language as $lang) {
+        $code = (string)$lang['code'];
+        $folder = (string)$lang['folder'];
+        
+        $jsFolderNames[$code] = $folder;
+        // Se genera el formato "English Language Pack", "Spanish Language Pack", etc.
+        $jsPrettyNames[$code] = ucfirst(strtolower($folder)) . " Language Pack";
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traductor Web de Archivos MyBB (.lang.php)</title>
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        mybb: {
+                            main: '#005389',
+                            dark: '#003a61',
+                            light: '#e8f3fa',
+                            accent: '#2c82c9'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .resizable-th {
+            position: relative;
+        }
+        .resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 5px;
+            background: rgba(150, 150, 150, 0.2);
+            cursor: col-resize;
+            user-select: none;
+            touch-action: none;
+        }
+        .resizer:hover, .resizing {
+            background: #005389;
+            width: 7px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-zinc-900 dark:text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-mybb-main selection:text-white">
+
+    <!-- HEADER -->
+    <header class="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border-b border-slate-200 dark:border-zinc-700/80 shrink-0 shadow-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+            <div class="flex items-center space-x-3 min-w-0">
+                <div class="bg-mybb-main text-white p-2 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <i class="fa-solid fa-comments text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-base font-bold tracking-tight truncate flex items-center gap-2 text-slate-900 dark:text-white">
+                        MyBB Language Translator
+                        <span class="text-[10px] bg-mybb-light dark:bg-mybb-dark/60 text-mybb-main dark:text-mybb-light px-2 py-0.5 rounded-full font-mono border border-mybb-accent/20">.lang.php</span>
+                    </h1>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 flex-shrink-0">
+                <button id="themeToggle" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-slate-600 dark:text-zinc-200" title="Cambiar tema">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- SIDEBAR CONFIGURATION -->
+        <aside class="w-full lg:w-80 flex-shrink-0 space-y-4">
+            <div class="bg-white dark:bg-zinc-800 rounded-2xl p-4 border border-slate-200 dark:border-zinc-700/80 shadow-sm space-y-4">
+                
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-zinc-700/80 pb-2">
+                    <h2 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-slate-800 dark:text-zinc-100">
+                        <i class="fa-solid fa-gears text-mybb-main dark:text-mybb-accent"></i> Configuración
+                    </h2>
+                    <button id="btnSwapLangs" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-slate-600 dark:text-zinc-200" title="Intercambiar Idiomas">
+                        <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Idioma Origen</label>
+                        <select id="langSource" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none cursor-pointer dark:text-white">
+                            <?php if ($xmlLangs && isset($xmlLangs->source)): ?>
+                                <?php foreach ($xmlLangs->source->language as $lang): ?>
+                                    <?php 
+                                        $code = (string)$lang['code'];
+                                        $selected = ($code === 'en') ? 'selected' : '';
+                                    ?>
+                                    <option value="<?= htmlspecialchars($code) ?>" <?= $selected ?>><?= htmlspecialchars((string)$lang) ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="en" selected>English</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Idioma Destino</label>
+                        <select id="langTarget" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none cursor-pointer dark:text-white">
+                            <?php if ($xmlLangs && isset($xmlLangs->target)): ?>
+                                <?php foreach ($xmlLangs->target->language as $lang): ?>
+                                    <?php 
+                                        $code = (string)$lang['code'];
+                                        $selected = ($code === 'es') ? 'selected' : '';
+                                    ?>
+                                    <option value="<?= htmlspecialchars($code) ?>" <?= $selected ?>><?= htmlspecialchars((string)$lang) ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="es" selected>Spanish</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Motor de Traducción</label>
+                        <select id="translateEngine" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none cursor-pointer dark:text-white">
+                            <option value="google_free">Google Translate (Gratuito)</option>
+                            <option value="mymemory">MyMemory Translate</option>
+                            <option value="lingva">Lingva Translate</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-mybb-light/60 dark:bg-mybb-dark/30 border border-mybb-accent/20 rounded-xl p-3 space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[10px] font-bold text-mybb-main dark:text-mybb-light uppercase tracking-wider">Intervalo Peticiones</label>
+                            <span id="delayVal" class="text-xs font-extrabold text-mybb-main dark:text-mybb-accent">300 ms</span>
+                        </div>
+                        <input type="range" id="delayMs" min="50" max="1500" step="50" value="300" class="w-full cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- METADATOS Y AUTORÍA DE LA CABECERA -->
+            <div class="bg-white dark:bg-zinc-800 rounded-2xl p-4 border border-slate-200 dark:border-zinc-700/80 shadow-sm space-y-3">
+                <h2 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-slate-800 dark:text-zinc-100 border-b border-slate-100 dark:border-zinc-700/80 pb-2">
+                    <i class="fa-solid fa-feather-pointed text-mybb-main dark:text-mybb-accent"></i> Cabecera del Archivo
+                </h2>
+
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-500 dark:text-zinc-400 text-[10px] uppercase mb-1">Nombre del Pack (Language Pack)</label>
+                        <input type="text" id="headerPackName" placeholder="Ej. Spanish Language Pack" value="Spanish Language Pack" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-500 dark:text-zinc-400 text-[10px] uppercase mb-1">Traductor / Autor (Translator)</label>
+                        <input type="text" id="headerTranslator" placeholder="Ej. Tu nombre de autor" value="" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none dark:text-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ARCHIVOS CARGADOS -->
+            <div id="loadedFilesBox" class="hidden bg-white dark:bg-zinc-800 rounded-2xl p-4 border border-slate-200 dark:border-zinc-700/80 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-700/80 pb-2">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-zinc-200">Archivos Cargados</h3>
+                    <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300 cursor-pointer select-none" title="Marcar / Desmarcar todos">
+                        <input type="checkbox" id="selectAllFilesCheckbox" checked class="rounded border-slate-300 dark:border-zinc-600 text-mybb-main focus:ring-mybb-main">
+                        <span class="text-[11px]">Todos</span>
+                    </label>
+                </div>
+                <div id="loadedFilesList" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 text-xs"></div>
+            </div>
+
+            <div id="statsBox" class="hidden bg-white dark:bg-zinc-800 rounded-2xl p-4 border border-slate-200 dark:border-zinc-700/80 shadow-sm space-y-3">
+                <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-400 border-b border-slate-100 dark:border-zinc-700/80 pb-2">Resumen</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-50 dark:bg-zinc-700/40 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700/50">
+                        <p class="text-slate-400 dark:text-zinc-400 text-[10px] font-bold uppercase">Archivos</p>
+                        <p id="statFiles" class="text-base font-extrabold text-slate-800 dark:text-zinc-100">0</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-zinc-700/40 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700/50">
+                        <p class="text-slate-400 dark:text-zinc-400 text-[10px] font-bold uppercase">Cadenas</p>
+                        <p id="statTotal" class="text-base font-extrabold text-slate-800 dark:text-zinc-100">0</p>
+                    </div>
+                    <div class="bg-emerald-50 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                        <p class="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase">Traducidas</p>
+                        <p id="statTranslated" class="text-base font-extrabold text-emerald-600 dark:text-emerald-400">0</p>
+                    </div>
+                    <div class="bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/40">
+                        <p class="text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase">Pendientes</p>
+                        <p id="statPending" class="text-base font-extrabold text-amber-600 dark:text-amber-400">0</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN WORKSPACE -->
+        <section class="flex-1 min-w-0 flex flex-col space-y-4">
+            
+            <!-- DROP ZONE -->
+            <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-zinc-700 hover:border-mybb-main dark:hover:border-mybb-accent bg-white dark:bg-zinc-800/60 rounded-3xl p-10 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm">
+                <input type="file" id="fileInputPHP" accept=".php" multiple class="hidden">
+                <input type="file" id="folderInputPHP" webkitdirectory directory multiple class="hidden">
+                <input type="file" id="zipInput" accept=".zip" class="hidden">
+                
+                <div class="bg-mybb-light dark:bg-zinc-700 text-mybb-main dark:text-mybb-accent w-20 h-20 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
+                    <i class="fa-solid fa-folder-tree text-4xl"></i>
+                </div>
+                
+                <h3 class="text-lg sm:text-xl font-bold mb-2 text-slate-900 dark:text-zinc-100">Sube tus archivos de idioma de MyBB</h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mb-6 max-w-md">
+                    Puedes subir una carpeta entera, un archivo .ZIP o seleccionar ficheros .lang.php sueltos.
+                </p>
+                
+                <div class="flex flex-wrap items-center justify-center gap-3 w-full">
+                    <button id="btnSelectFolder" class="bg-mybb-main hover:bg-mybb-dark text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open"></i> Carpeta Completa
+                    </button>
+                    <button id="btnSelectZip" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-file-zipper"></i> Archivo .ZIP
+                    </button>
+                    <button id="btnSelectFiles" class="bg-slate-200 hover:bg-slate-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-slate-800 dark:text-zinc-100 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-file-code"></i> Archivos Sueltos
+                    </button>
+                </div>
+            </div>
+
+            <!-- WORKSPACE INTERACTIVE AREA -->
+            <div id="workspace" class="hidden flex-col space-y-4">
+                
+                <!-- TOP CONTROL BAR -->
+                <div class="bg-white dark:bg-zinc-800 rounded-2xl p-3 border border-slate-200 dark:border-zinc-700/80 shadow-sm flex flex-col gap-2.5">
+                    
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <!-- PROGRESO -->
+                        <div class="flex items-center gap-3 flex-1 min-w-[200px]">
+                            <div class="w-full">
+                                <div class="flex justify-between items-center mb-1 text-[11px] font-bold">
+                                    <span class="text-slate-500 dark:text-zinc-400 flex items-center gap-1.5" id="progressLabelContainer">
+                                        <i class="fa-solid fa-spinner fa-spin hidden text-mybb-main dark:text-mybb-accent" id="spinnerTranslating"></i>
+                                        <i class="fa-solid fa-circle-check text-emerald-500 hidden" id="iconCompleted"></i>
+                                        <span id="progressLabelText">Progreso</span>
+                                    </span>
+                                    <span id="progressText" class="text-mybb-main dark:text-mybb-accent font-mono font-extrabold transition-colors">0% (0/0)</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-zinc-700 h-2 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-zinc-600/60">
+                                    <div id="progressBar" class="bg-mybb-main dark:bg-mybb-accent h-full rounded-full w-0 transition-all duration-300"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BOTONERA DE ACCIONES -->
+                        <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-900/50 p-1 rounded-xl border border-slate-200/80 dark:border-zinc-700/80">
+                            <button id="btnAutoTranslate" class="bg-mybb-main hover:bg-mybb-dark text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all" title="Traducir todas las cadenas pendientes">
+                                <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                                <span class="hidden sm:inline">Traducir</span>
+                            </button>
+                            
+                            <button id="btnStop" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all" title="Detener proceso">
+                                <i class="fa-solid fa-circle-stop text-xs"></i>
+                                <span class="hidden sm:inline">Detener</span>
+                            </button>
+
+                            <button id="btnResetTranslations" class="bg-amber-500 hover:bg-amber-600 text-white p-1.5 sm:px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all" title="Borrar solo los textos traducidos">
+                                <i class="fa-solid fa-eraser text-xs"></i>
+                                <span class="hidden md:inline">Limpiar Traducido</span>
+                            </button>
+
+                            <button id="btnDownloadZip" class="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 sm:px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all" title="Descargar archivos marcados en un ZIP">
+                                <i class="fa-solid fa-file-arrow-down text-xs"></i>
+                                <span class="hidden md:inline">Descargar Seleccionados (ZIP)</span>
+                            </button>
+
+                            <div class="h-4 w-px bg-slate-300 dark:bg-zinc-700 mx-0.5"></div>
+
+                            <button id="btnClear" class="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-1.5 rounded-lg text-xs font-bold transition-all" title="Cerrar proyecto y descartar todo">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BUSCADOR Y FILTROS -->
+                    <div class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100 dark:border-zinc-700/80 items-center justify-between">
+                        <div class="flex items-center gap-2 w-full sm:w-auto flex-1">
+                            <select id="fileFilterSelect" class="rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 dark:text-white px-2.5 py-1 text-xs focus:ring-2 focus:ring-mybb-main outline-none max-w-xs truncate">
+                                <option value="ALL">Todos los Archivos</option>
+                            </select>
+                            
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-400 text-xs"></i>
+                                <input type="text" id="searchInput" placeholder="Buscar variable o texto..." class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 dark:text-white pl-8 pr-3 py-1 text-xs focus:ring-2 focus:ring-mybb-main outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-1 w-full sm:w-auto justify-end">
+                            <button data-filter="all" class="filter-btn active bg-mybb-main text-white px-2 py-0.5 rounded-lg text-[11px] font-bold">Todas</button>
+                            <button data-filter="pending" class="filter-btn bg-slate-100 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">Pendientes</button>
+                            <button data-filter="translated" class="filter-btn bg-slate-100 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">Traducidas</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTENEDOR DE LA TABLA -->
+                <div class="bg-white dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700/80 shadow-sm overflow-hidden min-h-[500px] max-h-[75vh] flex flex-col">
+                    
+                    <div id="currentFileBanner" class="bg-slate-100/80 dark:bg-zinc-900/60 px-3 py-1.5 border-b border-slate-200 dark:border-zinc-700/80 flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300 font-medium">
+                        <i class="fa-regular fa-file-code text-mybb-main dark:text-mybb-accent"></i>
+                        <span>Viendo archivo:</span>
+                        <span id="currentFileName" class="font-bold font-mono text-slate-800 dark:text-zinc-100 bg-slate-200/60 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-[11px]">Todos los Archivos</span>
+                    </div>
+
+                    <div class="overflow-x-auto overflow-y-auto w-full h-full">
+                        <table id="translationTable" class="w-full text-left border-collapse table-fixed">
+                            <thead class="bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 sticky top-0 z-10 select-none">
+                                <tr>
+                                    <th class="py-2 px-2.5 w-10 text-center border-r border-slate-200/50 dark:border-zinc-700/50">#</th>
+                                    <th class="resizable-th py-2 px-2.5 w-1/4 border-r border-slate-200/50 dark:border-zinc-700/50">
+                                        Variable
+                                        <div class="resizer"></div>
+                                    </th>
+                                    <th class="resizable-th py-2 px-2.5 w-3/8 border-r border-slate-200/50 dark:border-zinc-700/50">
+                                        Texto Original
+                                        <div class="resizer"></div>
+                                    </th>
+                                    <th class="resizable-th py-2 px-2.5 w-3/8">
+                                        Traducción
+                                        <div class="resizer"></div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="translationTableBody" class="divide-y divide-slate-100 dark:divide-zinc-700/60 text-xs">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL CUSTOMIZADO -->
+    <div id="customModal" class="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+        <div class="bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-3xl p-6 shadow-2xl max-w-sm w-full transform scale-95 transition-transform duration-200 space-y-4">
+            <div class="flex items-start gap-3">
+                <div id="modalIconContainer" class="p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <i id="modalIcon" class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </div>
+                <div class="space-y-1 min-w-0">
+                    <h3 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-zinc-100">Atención</h3>
+                    <p id="modalMessage" class="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed break-words"></p>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-700/60">
+                <button id="modalBtnCancel" class="hidden px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-600 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold transition-all">Cancelar</button>
+                <button id="modalBtnConfirm" class="px-4 py-2 rounded-xl bg-mybb-main hover:bg-mybb-dark text-white text-xs font-bold shadow-sm transition-all">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 text-white dark:bg-white dark:text-zinc-950 px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-bold translate-y-20 opacity-0 transition-all pointer-events-none z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-mybb-accent"></i> <span id="toastMsg">Notificación</span>
+    </div>
+
+    <script>
+        // Mapeos PHP a JavaScript
+        let langFolderNames = <?= json_encode($jsFolderNames) ?>;
+        let langPrettyNames = <?= json_encode($jsPrettyNames) ?>;
+
+        let mybbFiles = {};
+        let allEntries = [];
+        let isTranslating = false;
+
+        const themeToggle = document.getElementById('themeToggle');
+        const dropZone = document.getElementById('dropZone');
+        const fileInputPHP = document.getElementById('fileInputPHP');
+        const folderInputPHP = document.getElementById('folderInputPHP');
+        const zipInput = document.getElementById('zipInput');
+        const workspace = document.getElementById('workspace');
+        const statsBox = document.getElementById('statsBox');
+        const loadedFilesBox = document.getElementById('loadedFilesBox');
+        const loadedFilesList = document.getElementById('loadedFilesList');
+        const selectAllFilesCheckbox = document.getElementById('selectAllFilesCheckbox');
+        const translationTableBody = document.getElementById('translationTableBody');
+        const currentFileName = document.getElementById('currentFileName');
+
+        const btnSelectFolder = document.getElementById('btnSelectFolder');
+        const btnSelectZip = document.getElementById('btnSelectZip');
+        const btnSelectFiles = document.getElementById('btnSelectFiles');
+        const btnAutoTranslate = document.getElementById('btnAutoTranslate');
+        const btnStop = document.getElementById('btnStop');
+        const btnResetTranslations = document.getElementById('btnResetTranslations');
+        const btnDownloadZip = document.getElementById('btnDownloadZip');
+        const btnClear = document.getElementById('btnClear');
+        const btnSwapLangs = document.getElementById('btnSwapLangs');
+        const spinnerTranslating = document.getElementById('spinnerTranslating');
+        const iconCompleted = document.getElementById('iconCompleted');
+        const progressLabelText = document.getElementById('progressLabelText');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        const langSource = document.getElementById('langSource');
+        const langTarget = document.getElementById('langTarget');
+        const translateEngine = document.getElementById('translateEngine');
+        const delayMs = document.getElementById('delayMs');
+        const delayVal = document.getElementById('delayVal');
+
+        const headerPackName = document.getElementById('headerPackName');
+        const headerTranslator = document.getElementById('headerTranslator');
+
+        const customModal = document.getElementById('customModal');
+        const modalIconContainer = document.getElementById('modalIconContainer');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalBtnCancel = document.getElementById('modalBtnCancel');
+        const modalBtnConfirm = document.getElementById('modalBtnConfirm');
+
+        function showCustomModal({ title = 'Atención', message = '', icon = 'fa-triangle-exclamation', color = 'amber', isConfirm = false }) {
+            return new Promise((resolve) => {
+                modalTitle.innerText = title;
+                modalMessage.innerText = message;
+                modalIcon.className = `fa-solid ${icon} text-xl`;
+
+                if (color === 'amber') {
+                    modalIconContainer.className = 'p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0';
+                    modalBtnConfirm.className = 'px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all';
+                } else if (color === 'rose') {
+                    modalIconContainer.className = 'p-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0';
+                    modalBtnConfirm.className = 'px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all';
+                } else {
+                    modalIconContainer.className = 'p-2.5 rounded-2xl bg-mybb-light dark:bg-mybb-dark/50 text-mybb-main dark:text-mybb-accent flex items-center justify-center shrink-0';
+                    modalBtnConfirm.className = 'px-4 py-2 rounded-xl bg-mybb-main hover:bg-mybb-dark text-white text-xs font-bold shadow-sm transition-all';
+                }
+
+                if (isConfirm) {
+                    modalBtnCancel.classList.remove('hidden');
+                } else {
+                    modalBtnCancel.classList.add('hidden');
+                }
+
+                customModal.classList.remove('hidden');
+                setTimeout(() => {
+                    customModal.classList.remove('opacity-0', 'pointer-events-none');
+                    customModal.children[0].classList.remove('scale-95');
+                }, 10);
+
+                const handleConfirm = () => {
+                    closeModal();
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    closeModal();
+                    resolve(false);
+                };
+
+                const closeModal = () => {
+                    customModal.classList.add('opacity-0', 'pointer-events-none');
+                    customModal.children[0].classList.add('scale-95');
+                    setTimeout(() => {
+                        customModal.classList.add('hidden');
+                    }, 200);
+
+                    modalBtnConfirm.removeEventListener('click', handleConfirm);
+                    modalBtnCancel.removeEventListener('click', handleCancel);
+                };
+
+                modalBtnConfirm.addEventListener('click', handleConfirm);
+                modalBtnCancel.addEventListener('click', handleCancel);
+            });
+        }
+
+        const savedTranslator = localStorage.getItem('mybb_translator');
+        if (savedTranslator !== null) {
+            headerTranslator.value = savedTranslator;
+        }
+
+        headerTranslator.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val !== "") {
+                localStorage.setItem('mybb_translator', val);
+            } else {
+                localStorage.removeItem('mybb_translator');
+            }
+        });
+
+        const statFiles = document.getElementById('statFiles');
+        const statTotal = document.getElementById('statTotal');
+        const statTranslated = document.getElementById('statTranslated');
+        const statPending = document.getElementById('statPending');
+
+        const fileFilterSelect = document.getElementById('fileFilterSelect');
+        const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        });
+
+        langTarget.addEventListener('change', (e) => {
+            const tgtCode = e.target.value;
+            if (langPrettyNames[tgtCode]) {
+                headerPackName.value = langPrettyNames[tgtCode];
+            }
+        });
+
+        btnSwapLangs.addEventListener('click', () => {
+            const srcVal = langSource.value;
+            const tgtVal = langTarget.value;
+            if (srcVal !== 'auto') {
+                langSource.value = tgtVal;
+                langTarget.value = srcVal;
+                
+                if (langPrettyNames[srcVal]) {
+                    headerPackName.value = langPrettyNames[srcVal];
+                }
+                showToast("Idiomas intercambiados.");
+            }
+        });
+
+        delayMs.addEventListener('input', (e) => {
+            delayVal.innerText = `${e.target.value} ms`;
+        });
+
+        function showToast(msg, duration = 3000) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, duration);
+        }
+
+        btnSelectFolder.addEventListener('click', (e) => { e.stopPropagation(); folderInputPHP.click(); });
+        btnSelectZip.addEventListener('click', (e) => { e.stopPropagation(); zipInput.click(); });
+        btnSelectFiles.addEventListener('click', (e) => { e.stopPropagation(); fileInputPHP.click(); });
+
+        fileInputPHP.addEventListener('change', (e) => { handleFileList(Array.from(e.target.files)); e.target.value = ''; });
+        folderInputPHP.addEventListener('change', (e) => { handleFileList(Array.from(e.target.files)); e.target.value = ''; });
+        zipInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleZipFile(e.target.files[0]); e.target.value = ''; });
+
+        async function handleFileList(files) {
+            const phpFiles = files.filter(f => f.name.endsWith('.php'));
+            if (phpFiles.length === 0) {
+                showCustomModal({
+                    title: 'Sin archivos válidos',
+                    message: 'No se encontraron archivos .php compatibles en la selección actual.',
+                    icon: 'fa-circle-exclamation',
+                    color: 'amber'
+                });
+                return;
+            }
+
+            mybbFiles = {};
+            allEntries = [];
+
+            for (const file of phpFiles) {
+                const path = file.webkitRelativePath || file.name;
+                const content = await readFileAsText(file);
+                parseMyBBContent(path, content);
+            }
+
+            finishLoading();
+        }
+
+        async function handleZipFile(file) {
+            try {
+                showToast("Descomprimiendo archivo ZIP...");
+                const zip = await JSZip.loadAsync(file);
+                mybbFiles = {};
+                allEntries = [];
+
+                for (const relativePath in zip.files) {
+                    const zipObj = zip.files[relativePath];
+                    if (!zipObj.dir && relativePath.endsWith('.php')) {
+                        const content = await zipObj.async('string');
+                        parseMyBBContent(relativePath, content);
+                    }
+                }
+                finishLoading();
+            } catch (err) {
+                showCustomModal({
+                    title: 'Error de Lectura',
+                    message: 'No se pudo leer el archivo ZIP seleccionado. Verifica que sea un archivo comprimido válido.',
+                    icon: 'fa-triangle-exclamation',
+                    color: 'rose'
+                });
+            }
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        function parseMyBBContent(filePath, content) {
+            const regex = /\$l\s*\[\s*['"]([^'"]+)['"]\s*\]\s*=\s*(['"])([\s\S]*?)\2\s*;/g;
+            
+            const fileItem = {
+                filePath: filePath,
+                rawContent: content,
+                enabled: true,
+                items: []
+            };
+
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                const key = match[1];
+                const quoteChar = match[2];
+                let originalText = match[3];
+
+                if (quoteChar === "'") {
+                    originalText = originalText.replace(/\\'/g, "'");
+                } else {
+                    originalText = originalText.replace(/\\"/g, '"');
+                }
+
+                originalText = originalText.trim();
+
+                const entry = {
+                    id: allEntries.length,
+                    filePath: filePath,
+                    key: key,
+                    quoteChar: quoteChar,
+                    original: originalText,
+                    translated: "",
+                    isTranslated: false
+                };
+
+                fileItem.items.push(entry);
+                allEntries.push(entry);
+            }
+
+            if (fileItem.items.length > 0) {
+                mybbFiles[filePath] = fileItem;
+            }
+        }
+
+        function finishLoading() {
+            const fileCount = Object.keys(mybbFiles).length;
+            if (fileCount === 0 || allEntries.length === 0) {
+                showCustomModal({
+                    title: 'Cadenas no encontradas',
+                    message: 'Los archivos procesados no contienen variables de traducción ($l) compatibles con MyBB.',
+                    icon: 'fa-circle-info',
+                    color: 'amber'
+                });
+                return;
+            }
+
+            fileFilterSelect.innerHTML = `<option value="ALL">Todos los Archivos (${fileCount})</option>`;
+            for (const path in mybbFiles) {
+                const option = document.createElement('option');
+                option.value = path;
+                option.innerText = `${path} (${mybbFiles[path].items.length})`;
+                fileFilterSelect.appendChild(option);
+            }
+
+            dropZone.classList.add('hidden');
+            workspace.classList.remove('hidden');
+            workspace.classList.add('flex');
+            statsBox.classList.remove('hidden');
+            loadedFilesBox.classList.remove('hidden');
+
+            selectAllFilesCheckbox.checked = true;
+            renderFileListSidebar();
+            updateStats();
+            renderTable();
+            initResizableColumns();
+            showToast(`¡Cargados ${fileCount} archivos!`);
+        }
+
+        function renderFileListSidebar() {
+            loadedFilesList.innerHTML = '';
+            let allChecked = true;
+
+            for (const path in mybbFiles) {
+                const fileObj = mybbFiles[path];
+                const fileName = path.split('/').pop();
+                if (!fileObj.enabled) allChecked = false;
+
+                const totalItems = fileObj.items.length;
+                const translatedItems = fileObj.items.filter(item => item.isTranslated).length;
+                
+                const isCompleted = totalItems > 0 && totalItems === translatedItems;
+                const isIncomplete = translatedItems > 0 && translatedItems < totalItems;
+
+                let rowStyle = 'bg-transparent border-transparent text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700/50';
+                let fileIcon = '<i class="fa-regular fa-file-code text-slate-400 dark:text-zinc-500"></i>';
+                let nameStyle = '';
+                let badgeHtml = '';
+                let countStyle = 'text-slate-400';
+                let btnStyle = 'text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40';
+
+                if (isCompleted) {
+                    rowStyle = 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40';
+                    fileIcon = '<i class="fa-regular fa-file-circle-check text-emerald-600 dark:text-emerald-400"></i>';
+                    nameStyle = 'text-emerald-700 dark:text-emerald-300 font-medium';
+                    badgeHtml = `<span class="text-[9px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-300/50 dark:border-emerald-700/50">OK</span>`;
+                    countStyle = 'text-emerald-600 dark:text-emerald-400 font-bold';
+                    btnStyle = 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 hover:bg-emerald-200 dark:hover:bg-emerald-800';
+                } else if (isIncomplete) {
+                    rowStyle = 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40';
+                    fileIcon = '<i class="fa-solid fa-file-circle-exclamation text-amber-600 dark:text-amber-400"></i>';
+                    nameStyle = 'text-amber-600 dark:text-amber-400 font-medium';
+                    badgeHtml = `<span class="text-[9px] bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold border border-amber-300/50 dark:border-amber-700/50">??</span>`;
+                    countStyle = 'text-amber-600 dark:text-amber-400 font-bold';
+                    btnStyle = 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-800';
+                }
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `flex items-center justify-between p-1.5 rounded-lg border transition-all ${rowStyle}`;
+                
+                itemDiv.innerHTML = `
+                    <label class="flex items-center gap-2 text-xs truncate cursor-pointer select-none flex-1 min-w-0 mr-1">
+                        <input type="checkbox" data-path="${escapeHtml(path)}" ${fileObj.enabled ? 'checked' : ''} class="file-checkbox rounded border-slate-300 dark:border-zinc-600 text-mybb-main focus:ring-mybb-main">
+                        ${fileIcon}
+                        <span class="truncate ${nameStyle}" title="${escapeHtml(path)}">${escapeHtml(fileName)}</span>
+                    </label>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        ${badgeHtml}
+                        <span class="text-[10px] font-mono ${countStyle}">(${translatedItems}/${totalItems})</span>
+                        <button class="btn-download-single p-1 rounded transition-colors ${btnStyle}" data-path="${escapeHtml(path)}" title="Descargar solo este archivo traducido">
+                            <i class="fa-solid fa-file-arrow-down text-xs"></i>
+                        </button>
+                    </div>
+                `;
+
+                itemDiv.querySelector('.file-checkbox').addEventListener('change', (e) => {
+                    const filePath = e.target.getAttribute('data-path');
+                    mybbFiles[filePath].enabled = e.target.checked;
+                    
+                    const hasUnchecked = Object.values(mybbFiles).some(f => !f.enabled);
+                    selectAllFilesCheckbox.checked = !hasUnchecked;
+
+                    renderTable();
+                    updateStats();
+                });
+
+                itemDiv.querySelector('.btn-download-single').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const filePath = e.currentTarget.getAttribute('data-path');
+                    downloadSingleFile(filePath);
+                });
+
+                loadedFilesList.appendChild(itemDiv);
+            }
+
+            selectAllFilesCheckbox.checked = allChecked;
+        }
+
+        selectAllFilesCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            for (const path in mybbFiles) {
+                mybbFiles[path].enabled = isChecked;
+            }
+            renderFileListSidebar();
+            renderTable();
+            updateStats();
+        });
+
+        function renderTable() {
+            translationTableBody.innerHTML = '';
+            const fileFilter = fileFilterSelect.value;
+            const activeFilterBtn = document.querySelector('.filter-btn.active');
+            const statusFilter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
+            const query = searchInput.value.toLowerCase().trim();
+
+            currentFileName.innerText = fileFilter === 'ALL' ? 'Todos los Archivos' : fileFilter;
+
+            const filtered = allEntries.filter(entry => {
+                if (!mybbFiles[entry.filePath] || !mybbFiles[entry.filePath].enabled) return false;
+                if (fileFilter !== 'ALL' && entry.filePath !== fileFilter) return false;
+                if (statusFilter === 'translated' && !entry.isTranslated) return false;
+                if (statusFilter === 'pending' && entry.isTranslated) return false;
+                if (query) {
+                    const matchKey = entry.key.toLowerCase().includes(query);
+                    const matchOrig = entry.original.toLowerCase().includes(query);
+                    const matchTrans = entry.translated.toLowerCase().includes(query);
+                    if (!matchKey && !matchOrig && !matchTrans) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                translationTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-8 text-center text-slate-400 dark:text-zinc-500 text-xs">
+                            No se encontraron resultados.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            filtered.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-zinc-700/30 border-b border-slate-100 dark:border-zinc-700/50";
+
+                const hasTranslation = entry.translated && entry.translated.trim() !== "";
+
+                tr.innerHTML = `
+                    <td class="py-1.5 px-2.5 text-center text-[10px] font-mono text-slate-400 dark:text-zinc-500 align-top">${entry.id + 1}</td>
+                    <td class="py-1.5 px-2.5 align-top">
+                        <div class="font-mono text-[11px] text-slate-700 dark:text-zinc-300 font-semibold break-all" title="Clave: ${escapeHtml(entry.key)}">$l['${escapeHtml(entry.key)}']</div>
+                    </td>
+                    <td class="py-1.5 px-2.5 align-top text-xs text-slate-600 dark:text-zinc-300 leading-snug break-words" style="white-space: normal;">
+                        ${escapeHtml(entry.original)}
+                    </td>
+                    <td class="py-1.5 px-2.5 align-top cursor-pointer translation-cell" data-id="${entry.id}">
+                        <div class="translation-view p-1 rounded border border-transparent hover:border-slate-300 dark:hover:border-zinc-600 text-xs min-h-[28px] flex items-center ${hasTranslation ? 'text-slate-900 dark:text-zinc-100 font-medium' : 'text-slate-400 dark:text-zinc-500 italic'}">
+                            ${hasTranslation ? escapeHtml(entry.translated) : '<span class="flex items-center gap-1 opacity-50 text-[11px]"><i class="fa-regular fa-pen-to-square"></i> Editar...</span>'}
+                        </div>
+                    </td>
+                `;
+
+                const transCell = tr.querySelector('.translation-cell');
+                transCell.addEventListener('click', function() {
+                    if (this.querySelector('textarea')) return;
+
+                    const entryId = parseInt(this.getAttribute('data-id'));
+                    const currentEntry = allEntries[entryId];
+
+                    this.innerHTML = `
+                        <textarea class="w-full text-xs rounded-md border-2 border-mybb-main dark:border-mybb-accent bg-white dark:bg-zinc-900 p-1.5 outline-none resize-y text-slate-800 dark:text-zinc-100 block shadow-sm" rows="2" data-id="${entryId}">${escapeHtml(currentEntry.translated)}</textarea>
+                    `;
+
+                    const textarea = this.querySelector('textarea');
+                    textarea.focus();
+
+                    textarea.addEventListener('blur', () => {
+                        const val = textarea.value;
+                        currentEntry.translated = val;
+                        currentEntry.isTranslated = val.trim() !== "";
+                        updateStats();
+                        renderFileListSidebar();
+                        
+                        const isTrans = val.trim() !== "";
+                        transCell.innerHTML = `
+                            <div class="translation-view p-1 rounded border border-transparent hover:border-slate-300 dark:hover:border-zinc-600 text-xs min-h-[28px] flex items-center ${isTrans ? 'text-slate-900 dark:text-zinc-100 font-medium' : 'text-slate-400 dark:text-zinc-500 italic'}">
+                                ${isTrans ? escapeHtml(val) : '<span class="flex items-center gap-1 opacity-50 text-[11px]"><i class="fa-regular fa-pen-to-square"></i> Editar...</span>'}
+                            </div>
+                        `;
+                    });
+                });
+
+                fragment.appendChild(tr);
+            });
+
+            translationTableBody.appendChild(fragment);
+        }
+
+        function initResizableColumns() {
+            const table = document.getElementById('translationTable');
+            const cols = table.querySelectorAll('.resizable-th');
+
+            cols.forEach(col => {
+                const resizer = col.querySelector('.resizer');
+                if (!resizer) return;
+
+                let x = 0;
+                let w = 0;
+
+                const mouseDownHandler = function (e) {
+                    x = e.clientX;
+                    const styles = window.getComputedStyle(col);
+                    w = parseInt(styles.width, 10);
+
+                    resizer.classList.add('resizing');
+                    document.addEventListener('mousemove', mouseMoveHandler);
+                    document.addEventListener('mouseup', mouseUpHandler);
+                };
+
+                const mouseMoveHandler = function (e) {
+                    const dx = e.clientX - x;
+                    col.style.width = `${w + dx}px`;
+                };
+
+                const mouseUpHandler = function () {
+                    resizer.classList.remove('resizing');
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                };
+
+                resizer.addEventListener('mousedown', mouseDownHandler);
+            });
+        }
+
+        fileFilterSelect.addEventListener('change', renderTable);
+        searchInput.addEventListener('input', renderTable);
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-mybb-main', 'text-white');
+                    b.classList.add('bg-slate-100', 'dark:bg-zinc-700', 'text-slate-600', 'dark:text-zinc-300');
+                });
+                btn.classList.add('active', 'bg-mybb-main', 'text-white');
+                btn.classList.remove('bg-slate-100', 'dark:bg-zinc-700', 'text-slate-600', 'dark:text-zinc-300');
+                renderTable();
+            });
+        });
+
+        function updateStats() {
+            const activeEntries = allEntries.filter(e => mybbFiles[e.filePath] && mybbFiles[e.filePath].enabled);
+            const total = activeEntries.length;
+            const translated = activeEntries.filter(e => e.isTranslated).length;
+            const pending = total - translated;
+
+            const enabledFilesCount = Object.values(mybbFiles).filter(f => f.enabled).length;
+
+            statFiles.innerText = enabledFilesCount;
+            statTotal.innerText = total;
+            statTranslated.innerText = translated;
+            statPending.innerText = pending;
+
+            const pct = total > 0 ? Math.round((translated / total) * 100) : 0;
+            progressBar.style.width = `${pct}%`;
+
+            if (pct === 100 && total > 0) {
+                spinnerTranslating.classList.add('hidden');
+                iconCompleted.classList.remove('hidden');
+                progressLabelText.innerText = "Completado";
+                
+                progressBar.classList.remove('bg-mybb-main', 'dark:bg-mybb-accent');
+                progressBar.classList.add('bg-emerald-500');
+
+                progressText.innerText = `100% Completado (${translated}/${total})`;
+                progressText.className = "text-emerald-600 dark:text-emerald-400 font-mono font-extrabold";
+            } else {
+                iconCompleted.classList.add('hidden');
+                if (isTranslating) {
+                    spinnerTranslating.classList.remove('hidden');
+                    progressLabelText.innerText = "Traduciendo...";
+                } else {
+                    spinnerTranslating.classList.add('hidden');
+                    progressLabelText.innerText = "Progreso";
+                }
+
+                progressBar.classList.add('bg-mybb-main', 'dark:bg-mybb-accent');
+                progressBar.classList.remove('bg-emerald-500');
+
+                progressText.innerText = `${pct}% (${translated}/${total})`;
+                progressText.className = "text-mybb-main dark:text-mybb-accent font-mono font-extrabold";
+            }
+        }
+
+        function preservePlaceholders(text) {
+            const placeholders = [];
+            let processed = text;
+            let counter = 0;
+
+            const patterns = [
+                /%[0-9]*\$?[sdFf]/g,
+                /<\/?[a-zA-Z0-9]+[^>]*>/g
+            ];
+
+            patterns.forEach(pattern => {
+                processed = processed.replace(pattern, (match) => {
+                    const tag = `__VAR_${counter++}__`;
+                    placeholders.push({ tag, original: match });
+                    return tag;
+                });
+            });
+
+            return { processed, placeholders };
+        }
+
+        function restorePlaceholders(translatedText, placeholders) {
+            let restored = translatedText;
+            placeholders.forEach(item => {
+                const reg = new RegExp(item.tag, 'g');
+                restored = restored.replace(reg, item.original);
+            });
+            return restored;
+        }
+
+        function applyCapitalizationPattern(original, translation) {
+            if (!original || !translation) return translation;
+
+            const origWords = original.trim().split(/\s+/);
+            const isTitleCase = origWords.length > 0 && origWords.every(word => {
+                const cleanWord = word.replace(/[^a-zA-ZáéíóúñÁÉÍÓÚÑ]/g, '');
+                if (!cleanWord) return true;
+                return cleanWord[0] === cleanWord[0].toUpperCase();
+            });
+
+            if (isTitleCase) {
+                return translation.split(/\s+/).map(word => {
+                    if (!word) return word;
+                    return word.charAt(0).toUpperCase() + word.slice(1);
+                }).join(' ');
+            }
+
+            return translation;
+        }
+
+        async function translateString(text, from, to) {
+            if (!text.trim()) return "";
+            const { processed, placeholders } = preservePlaceholders(text);
+            const engine = translateEngine.value;
+            let result = "";
+
+            if (engine === 'google_free') {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(processed)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                result = data[0].map(x => x[0]).join('');
+
+            } else if (engine === 'mymemory') {
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(processed)}&langpair=${from}|${to}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                result = data.responseData.translatedText;
+
+            } else if (engine === 'lingva') {
+                const url = `https://lingva.ml/api/v1/${from}/${to}/${encodeURIComponent(processed)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                result = data.translation;
+            }
+
+            let finalTranslation = restorePlaceholders(result, placeholders);
+            return applyCapitalizationPattern(text, finalTranslation);
+        }
+
+        async function runAutoTranslation() {
+            if (isTranslating) return;
+            const pendingEntries = allEntries.filter(e => mybbFiles[e.filePath] && mybbFiles[e.filePath].enabled && !e.isTranslated);
+            if (pendingEntries.length === 0) {
+                showToast("¡Todas las cadenas ya están traducidas!");
+                return;
+            }
+
+            isTranslating = true;
+            btnAutoTranslate.classList.add('hidden');
+            btnStop.classList.remove('hidden');
+            spinnerTranslating.classList.remove('hidden');
+
+            const source = langSource.value;
+            const target = langTarget.value;
+            const delay = parseInt(delayMs.value);
+
+            showToast("Traduciendo automáticamente...");
+
+            for (let i = 0; i < allEntries.length; i++) {
+                if (!isTranslating) break;
+                const entry = allEntries[i];
+                if (!mybbFiles[entry.filePath] || !mybbFiles[entry.filePath].enabled || entry.isTranslated) continue;
+
+                try {
+                    const trans = await translateString(entry.original, source, target);
+                    entry.translated = trans;
+                    entry.isTranslated = true;
+
+                    const transCell = document.querySelector(`.translation-cell[data-id="${entry.id}"]`);
+                    if (transCell) {
+                        transCell.innerHTML = `
+                            <div class="translation-view p-1 rounded text-slate-900 dark:text-zinc-100 font-medium text-xs min-h-[28px] flex items-center">
+                                ${escapeHtml(trans)}
+                            </div>
+                        `;
+                    }
+
+                    updateStats();
+                    renderFileListSidebar();
+                    await new Promise(r => setTimeout(r, delay));
+                } catch (err) {
+                    console.error(err);
+                    showToast(`Error al traducir ID ${entry.id + 1}`);
+                    break;
+                }
+            }
+
+            stopTranslation();
+        }
+
+        function stopTranslation() {
+            isTranslating = false;
+            btnAutoTranslate.classList.remove('hidden');
+            btnStop.classList.add('hidden');
+            spinnerTranslating.classList.add('hidden');
+            updateStats();
+            renderFileListSidebar();
+            showToast("Traducción pausada/finalizada.");
+        }
+
+        btnAutoTranslate.addEventListener('click', runAutoTranslation);
+        btnStop.addEventListener('click', stopTranslation);
+
+        btnResetTranslations.addEventListener('click', async () => {
+            if (allEntries.length === 0) return;
+
+            const confirmed = await showCustomModal({
+                title: '¿Limpiar traducciones?',
+                message: 'Esta acción borrará todas las traducciones realizadas. Los textos y claves originales no se verán afectados.',
+                icon: 'fa-eraser',
+                color: 'amber',
+                isConfirm: true
+            });
+
+            if (confirmed) {
+                if (isTranslating) stopTranslation();
+                
+                allEntries.forEach(entry => {
+                    entry.translated = "";
+                    entry.isTranslated = false;
+                });
+                
+                renderTable();
+                updateStats();
+                renderFileListSidebar();
+                showToast("Traducciones borradas.");
+            }
+        });
+
+        btnClear.addEventListener('click', async () => {
+            const confirmed = await showCustomModal({
+                title: '¿Descartar proyecto?',
+                message: 'Se eliminarán todos los archivos subidos y el progreso actual de traducción. Tendrás que volver a subir tus ficheros.',
+                icon: 'fa-trash-can',
+                color: 'rose',
+                isConfirm: true
+            });
+
+            if (confirmed) {
+                mybbFiles = {};
+                allEntries = [];
+                workspace.classList.add('hidden');
+                workspace.classList.remove('flex');
+                statsBox.classList.add('hidden');
+                loadedFilesBox.classList.add('hidden');
+                dropZone.classList.remove('hidden');
+                fileInputPHP.value = "";
+                folderInputPHP.value = "";
+                zipInput.value = "";
+                showToast("Limpiado correctamente.");
+            }
+        });
+
+        function transformPathLanguageFolder(originalPath, targetLangCode) {
+            const targetLangFolderName = langFolderNames[targetLangCode] || 'translated';
+            const langFolderRegex = /(^|\/)(english|spanish|espanol|french|german|italian|portuguese|catalan|galician|basque|dutch|russian|polish|turkish|arabic|chinese|japanese)(\/|$)/gi;
+            
+            if (langFolderRegex.test(originalPath)) {
+                return originalPath.replace(langFolderRegex, `$1${targetLangFolderName}$3`);
+            }
+            
+            return originalPath;
+        }
+
+        function updatePhpHeader(content, packName, translatorName) {
+            let updatedContent = content;
+
+            if (packName) {
+                updatedContent = updatedContent.replace(
+                    /(\*\s*MyBB\s+[\d\.]+\s+)[^*\n]+(\s+Language Pack)/i,
+                    `$1${packName}`
+                );
+            }
+
+            if (/\/\*\*[\s\S]*?\*\//.test(updatedContent)) {
+                updatedContent = updatedContent.replace(/\/\*\*[\s\S]*?\*\//, (headerMatch) => {
+                    let cleanMatch = headerMatch.replace(/\r?\n\s*\*\s*(Translator:|@translator).*$/gm, '');
+                    cleanMatch = cleanMatch.replace(/(\r?\n\s*\*)+\s*\*\/$/, '$1/');
+
+                    if (translatorName && translatorName.trim() !== '') {
+                        return cleanMatch.replace(/(\r?\n\s*\*)\/$/, `$1\n * Translator: ${translatorName}\n */`);
+                    } else {
+                        return cleanMatch.replace(/(\r?\n\s*\*)\/$/, `$1\n */`);
+                    }
+                });
+            }
+
+            return updatedContent;
+        }
+
+        function generateFileContent(filePath) {
+            const fileObj = mybbFiles[filePath];
+            if (!fileObj) return "";
+
+            let content = fileObj.rawContent;
+            const customPackName = headerPackName.value.trim();
+            const customTranslator = headerTranslator.value.trim();
+
+            fileObj.items.forEach(item => {
+                const finalVal = item.translated.trim() !== "" ? item.translated : item.original;
+                
+                let escapedVal = finalVal;
+                if (item.quoteChar === "'") {
+                    escapedVal = escapedVal.replace(/'/g, "\\'");
+                } else {
+                    escapedVal = escapedVal.replace(/"/g, '\\"');
+                }
+
+                const itemRegex = new RegExp(`(\\$l\\s*\\[\\s*['"]${escapeRegExp(item.key)}['"]\\s*\\]\\s*=\\s*)(['"])[\\s\\S]*?\\2(\\s*;)`, 'g');
+                content = content.replace(itemRegex, `$1${item.quoteChar}${escapedVal}${item.quoteChar}$3`);
+            });
+
+            return updatePhpHeader(content, customPackName, customTranslator);
+        }
+
+        function downloadSingleFile(filePath) {
+            const fileObj = mybbFiles[filePath];
+            if (!fileObj) return;
+
+            const content = generateFileContent(filePath);
+            const fileName = filePath.split('/').pop();
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Descargado: ${fileName}`);
+        }
+
+        btnDownloadZip.addEventListener('click', async () => {
+            const enabledFileKeys = Object.keys(mybbFiles).filter(k => mybbFiles[k].enabled);
+            if (enabledFileKeys.length === 0) {
+                showCustomModal({
+                    title: 'Selecciona archivos',
+                    message: 'Debes marcar al menos un archivo en la barra lateral para poder generar la descarga.',
+                    icon: 'fa-circle-exclamation',
+                    color: 'amber'
+                });
+                return;
+            }
+
+            const targetLangCode = langTarget.value;
+            const targetLangName = langFolderNames[targetLangCode] || targetLangCode;
+
+            showToast("Creando archivo ZIP...");
+            const zip = new JSZip();
+
+            for (const filePath of enabledFileKeys) {
+                const content = generateFileContent(filePath);
+                const newPath = transformPathLanguageFolder(filePath, targetLangCode);
+                zip.file(newPath, content);
+            }
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mybb_language_${targetLangName}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("¡ZIP generado con éxito!");
+        });
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
