@@ -121,14 +121,12 @@
                     <div>
                         <label class="block font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Idioma Origen</label>
                         <select id="langSource" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none cursor-pointer dark:text-white">
-                            <option value="en" selected>English</option>
                         </select>
                     </div>
 
                     <div>
                         <label class="block font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Idioma Destino</label>
                         <select id="langTarget" class="w-full rounded-xl border border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-700/70 p-2 focus:ring-2 focus:ring-mybb-main outline-none cursor-pointer dark:text-white">
-                            <option value="es" selected>Spanish</option>
                         </select>
                     </div>
 
@@ -374,8 +372,75 @@
     </div>
 
     <script>
+        // CONFIGURACIÓN DE IDIOMAS EMBEBIDA (Sustituye la dependencia del fichero XML y el servidor PHP)
+        const LANGUAGES_SOURCE = [
+            { code: "auto", name: "Detectar automáticamente", folder: "auto" },
+            { code: "en", name: "Inglés (english)", folder: "english" },
+            { code: "es", name: "Español (spanish)", folder: "spanish" },
+            { code: "fr", name: "Francés (french)", folder: "french" },
+            { code: "de", name: "Alemán (german)", folder: "german" },
+            { code: "it", name: "Italiano (italian)", folder: "italian" },
+            { code: "pt", name: "Portugués (portuguese)", folder: "portuguese" },
+            { code: "ca", name: "Catalán (catalan)", folder: "catalan" },
+            { code: "gl", name: "Gallego (galician)", folder: "galician" },
+            { code: "eu", name: "Euskera (basque)", folder: "basque" },
+            { code: "nl", name: "Holandés (dutch)", folder: "dutch" },
+            { code: "ru", name: "Ruso (russian)", folder: "russian" },
+            { code: "pl", name: "Polaco (polish)", folder: "polish" },
+            { code: "tr", name: "Turco (turkish)", folder: "turkish" },
+            { code: "ar", name: "Árabe (arabic)", folder: "arabic" },
+            { code: "zh", name: "Chino (chinese)", folder: "chinese" },
+            { code: "ja", name: "Japonés (japanese)", folder: "japanese" }
+        ];
+
+        const LANGUAGES_TARGET = [
+            { code: "es", name: "Español (spanish)", folder: "spanish" },
+            { code: "en", name: "Inglés (english)", folder: "english" },
+            { code: "fr", name: "Francés (french)", folder: "french" },
+            { code: "de", name: "Alemán (german)", folder: "german" },
+            { code: "it", name: "Italiano (italian)", folder: "italian" },
+            { code: "pt", name: "Portugués (portuguese)", folder: "portuguese" },
+            { code: "ca", name: "Catalán (catalan)", folder: "catalan" },
+            { code: "gl", name: "Gallego (galician)", folder: "galician" },
+            { code: "eu", name: "Euskera (basque)", folder: "basque" },
+            { code: "nl", name: "Holandés (dutch)", folder: "dutch" },
+            { code: "ru", name: "Ruso (russian)", folder: "russian" },
+            { code: "pl", name: "Polaco (polish)", folder: "polish" },
+            { code: "tr", name: "Turco (turkish)", folder: "turkish" },
+            { code: "ar", name: "Árabe (arabic)", folder: "arabic" },
+            { code: "zh", name: "Chino (chinese)", folder: "chinese" },
+            { code: "ja", name: "Japonés (japanese)", folder: "japanese" }
+        ];
+
+        // Mapeos de carpetas y nombres descriptivos
         let langFolderNames = {};
         let langPrettyNames = {};
+
+        LANGUAGES_TARGET.forEach(item => {
+            langFolderNames[item.code] = item.folder;
+            const folderCap = item.folder.charAt(0).toUpperCase() + item.folder.slice(1);
+            langPrettyNames[item.code] = `${folderCap} Language Pack`;
+        });
+
+        // POBLAR SELECTS DE IDIOMAS
+        const langSource = document.getElementById('langSource');
+        const langTarget = document.getElementById('langTarget');
+
+        LANGUAGES_SOURCE.forEach(lang => {
+            const opt = document.createElement('option');
+            opt.value = lang.code;
+            opt.textContent = lang.name;
+            if (lang.code === 'en') opt.selected = true;
+            langSource.appendChild(opt);
+        });
+
+        LANGUAGES_TARGET.forEach(lang => {
+            const opt = document.createElement('option');
+            opt.value = lang.code;
+            opt.textContent = lang.name;
+            if (lang.code === 'es') opt.selected = true;
+            langTarget.appendChild(opt);
+        });
 
         let mybbFiles = {};
         let allEntries = [];
@@ -409,8 +474,6 @@
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
 
-        const langSource = document.getElementById('langSource');
-        const langTarget = document.getElementById('langTarget');
         const translateEngine = document.getElementById('translateEngine');
         const delayMs = document.getElementById('delayMs');
         const delayVal = document.getElementById('delayVal');
@@ -425,64 +488,6 @@
         const modalMessage = document.getElementById('modalMessage');
         const modalBtnCancel = document.getElementById('modalBtnCancel');
         const modalBtnConfirm = document.getElementById('modalBtnConfirm');
-
-        // Cargar XML mediante JavaScript al iniciar
-        async function loadLanguagesXml() {
-            try {
-                const response = await fetch('languages.xml');
-                if (!response.ok) throw new Error('No se pudo cargar languages.xml');
-                const str = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(str, "text/xml");
-
-                // Limpiar selectores
-                langSource.innerHTML = '';
-                langTarget.innerHTML = '';
-
-                // Cargar Idiomas Origen
-                const sourceLangs = xmlDoc.querySelectorAll('source language');
-                sourceLangs.forEach(lang => {
-                    const code = lang.getAttribute('code');
-                    const text = lang.textContent;
-                    const opt = document.createElement('option');
-                    opt.value = code;
-                    opt.textContent = text;
-                    if (code === 'en') opt.selected = true;
-                    langSource.appendChild(opt);
-                });
-
-                // Cargar Idiomas Destino y Guardar Mapeos
-                const targetLangs = xmlDoc.querySelectorAll('target language');
-                targetLangs.forEach(lang => {
-                    const code = lang.getAttribute('code');
-                    const folder = lang.getAttribute('folder');
-                    const text = lang.textContent;
-
-                    langFolderNames[code] = folder;
-                    langPrettyNames[code] = capitalizeFirst(folder) + " Language Pack";
-
-                    const opt = document.createElement('option');
-                    opt.value = code;
-                    opt.textContent = text;
-                    if (code === 'es') opt.selected = true;
-                    langTarget.appendChild(opt);
-                });
-
-                if (langPrettyNames['es']) {
-                    headerPackName.value = langPrettyNames['es'];
-                }
-
-            } catch (err) {
-                console.warn("Aviso: No se pudo cargar languages.xml automáticamente. Se usarán valores predeterminados.", err);
-            }
-        }
-
-        function capitalizeFirst(str) {
-            if (!str) return '';
-            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-        }
-
-        document.addEventListener('DOMContentLoaded', loadLanguagesXml);
 
         function showCustomModal({ title = 'Atención', message = '', icon = 'fa-triangle-exclamation', color = 'amber', isConfirm = false }) {
             return new Promise((resolve) => {
