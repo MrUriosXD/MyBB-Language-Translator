@@ -29,7 +29,6 @@ Permite cargar carpetas completas, archivos comprimidos en ZIP o ficheros `.lang
   - Respeta las mayúsculas iniciales según la convención del texto original.
 - **🌍 Gestión de Idiomas Integrada**:
   - Los idiomas soportados están definidos directamente en la aplicación.
-  - Ya no depende de un archivo `languages.xml` externo.
   - Permite seleccionar idioma de origen y destino y cambiarlos rápidamente.
 - **⚙️ Personalización de la Traducción**:
   - Intercambio rápido entre idioma origen y destino.
@@ -69,8 +68,6 @@ El proyecto se ha simplificado y actualmente está compuesto por los siguientes 
 
 2. **`README.md`**:
    - Documentación y guía de uso del proyecto.
-
-> ℹ️ **Nota:** El proyecto ya no utiliza `languages.xml`. La configuración de idiomas se encuentra integrada directamente en `index.html`, eliminando la dependencia de un archivo XML externo y de un procesamiento en servidor.
 
 ---
 
