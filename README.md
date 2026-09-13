@@ -1,201 +1,104 @@
 # 🌐 MyBB Language Translator
 
-Una herramienta web moderna para traducir de forma sencilla y automatizada los paquetes de idioma (`.lang.php`) del sistema de foros **MyBB**.
+Una potente y moderna herramienta web para traducir de forma sencilla y automatizada los paquetes de idioma (`.lang.php`) del sistema de foros **MyBB**.
 
-![HTML5](https://img.shields.io/badge/HTML5-Static-E34F26?style=flat-square&logo=html5&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
-
-> **Aplicación 100 % del lado del cliente:** ya no necesita PHP, `languages.xml` ni un servidor con procesamiento PHP. Puede ejecutarse como una página web estática.
+![PHP Version](https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=flat-square&logo=php&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue.style=flat-square)
 
 ---
 
 ## 📋 Descripción
 
-**MyBB Language Translator** es un traductor web diseñado para trabajar con paquetes de idioma de **MyBB**. Permite cargar carpetas completas, archivos `.ZIP` o ficheros `.lang.php` individuales y procesar sus cadenas directamente en el navegador.
-
-La aplicación está construida como una página estática (`index.html`) y utiliza JavaScript para analizar, editar, traducir y exportar los archivos. Durante el proceso se conservan las variables dinámicas de MyBB (`%s`, `{1}`, `$foo`, etc.) y las etiquetas HTML presentes en las cadenas.
+**MyBB Language Translator** es un traductor web dinámico en PHP/JS diseñado para la gestión de paquetes de traducción de MyBB. Permite cargar carpetas completas, archivos comprimidos en ZIP o ficheros `.lang.php` sueltos, traduciendo automáticamente sus cadenas mediante diversos motores de traducción, mientras respeta la estructura, variables internas (`$1`, `%s`, etc.) y etiquetas HTML del framework MyBB.
 
 ---
 
-## ✨ Características principales
+## ✨ Características Principales
 
-- 📂 **Carga flexible**: carpetas completas, archivos `.ZIP` o ficheros `.lang.php` individuales.
-- 🤖 **Motores de traducción**: Google Translate (gratuito), MyMemory Translate y Lingva Translate.
-- 🧠 **Preservación inteligente**: mantiene variables dinámicas, etiquetas HTML y patrones de mayúsculas.
-- ⚙️ **Idiomas integrados**: los idiomas de origen y destino están definidos directamente en `index.html`, sin XML externo.
-- 🎨 **Interfaz moderna**: diseño responsive, tema claro/oscuro, Tailwind CSS, Font Awesome, Drag & Drop, filtros y edición manual.
-- ⏱️ **Control de peticiones**: intervalo configurable entre peticiones para reducir problemas de rate limit.
-- 📊 **Estadísticas**: archivos, cadenas totales, traducidas y pendientes, además del progreso de traducción.
-- 📦 **Exportación**: descarga individual o generación de un `.ZIP` con la estructura del paquete para `inc/languages/`.
-- 📝 **Cabecera editable**: nombre del Language Pack y traductor/autor.
+- **📂 Flexibilidad de Carga**: Sube archivos `.php` individuales, carpetas completas o paquetes comprimidos en `.zip`.
+- **🤖 Motores de Traducción Integrados**:
+  - Google Translate (Gratuito)
+  - MyMemory Translate
+  - Lingva Translate
+- **🧠 Preservación Inteligente de Formato**:
+  - Mantiene intactas las variables dinámicas (ej. `%s`, `{1}`, `$foo`) y etiquetas HTML durante el proceso de traducción.
+  - Respeta las mayúsculas iniciales según la convención del texto original.
+- **⚙️ Personalización de Metadatos**:
+  - Configura automáticamente el nombre del paquete de idioma (*Language Pack*) y la autoría (*Translator*) en las cabeceras PHP.
+- **🎨 Interfaz Adaptativa e Intuitiva**:
+  - Tema claro/oscuro (*Dark Mode*) con diseño responsivo potenciado por **Tailwind CSS**.
+  - Control de intervalo de peticiones (ms) para evitar bloqueos por límite de tasa (*rate limit*).
+  - Edición manual interactiva de cualquier cadena directamente desde la tabla.
+  - Redimensionamiento de columnas y filtros por estado (*Pendientes*, *Traducidas*, *Buscar*).
+- **📦 Exportación Completa o Individual**:
+  - Descarga archivos modificados de forma independiente o genera la estructura completa en un archivo `.zip` mapeado al directorio del idioma destino (ej. `inc/languages/spanish/`).
 
 ---
 
-## 📁 Estructura del proyecto
+## 📁 Archivos del Proyecto
 
-El proyecto se ha simplificado y actualmente está compuesto por:
+El repositorio se compone de los siguientes ficheros principales:
 
 ```text
 .
-├── index.html    # Aplicación web completa (HTML + JavaScript + Tailwind CSS)
-└── README.md     # Documentación del proyecto
+├── index.php         # Interfaz web principal y motor lógico (PHP / HTML5 / JS / Tailwind CSS)
+├── languages.xml     # Archivo de configuración XML con los idiomas de origen/destino soportados
+└── README.md         # Documentación general del repositorio
 ```
 
-### `index.html`
+### Descripción de Componentes
 
-Contiene toda la aplicación: interfaz, configuración de idiomas, procesamiento de archivos `.lang.php`, lectura/generación de ZIP mediante JSZip, traducción, edición manual, estadísticas y exportación.
+1. **`index.php`**:
+   - Carga la configuración del archivo `languages.xml`.
+   - Proporciona la interfaz de usuario completa (Sidebar de configuración, Drag & Drop zona de carga, tabla interactiva de edición y métricas de progreso).
+   - Procesa la extracción de cadenas `$l['clave'] = 'valor';` mediante JavaScript en el navegador.
 
-### Configuración de idiomas
-
-La configuración que anteriormente se encontraba en `languages.xml` ahora está **integrada directamente en `index.html`** mediante estructuras JavaScript.
-
-Se mantienen internamente los mapeos entre código ISO, nombre visible y nombre de la carpeta utilizada por MyBB. Esto elimina la petición y el análisis de un XML externo.
-
----
-
-## 🔄 Cambios recientes
-
-### 🆕 Arquitectura completamente estática
-
-El proyecto ha dejado de utilizar `index.php` como punto de entrada y ahora utiliza:
-
-```text
-index.html
-```
-
-La lógica que anteriormente dependía de PHP para cargar `languages.xml` se ha trasladado al navegador mediante JavaScript.
-
-### 🗑️ Eliminación de `languages.xml`
-
-`languages.xml` ha sido eliminado. Los datos de idiomas, junto con los nombres de carpetas y nombres visibles, están ahora integrados en `index.html`.
-
-### ⚡ Inicialización de idiomas en cliente
-
-Los selectores de **Idioma Origen** e **Idioma Destino** se rellenan directamente desde las configuraciones JavaScript integradas en la página.
-
-Los valores iniciales son:
-
-- 🇬🇧 **Origen:** English (`en`)
-- 🇪🇸 **Destino:** Spanish (`es`)
-
-### 🌐 Ventajas
-
-El nuevo modelo permite alojar la aplicación en servicios de hosting estático, incluyendo **GitHub Pages**, sin PHP ni configuración de servidor.
+2. **`languages.xml`**:
+   - Define los idiomas disponibles tanto para la detección/origen como para el destino.
+   - Vincula cada código ISO de idioma con el nombre estándar de la carpeta en MyBB (por ejemplo: `es` $\rightarrow$ `spanish`).
 
 ---
 
-## 🚀 Instalación y requisitos
+## 🚀 Instalación y Requisitos
 
-### Requisitos
+### Requisitos Prácticos
+- Servidor web con **PHP 7.4** o superior (Apache, Nginx, LiteSpeed, XAMPP, Local, etc.).
+- Módulo `SimpleXML` de PHP activado para la lectura de `languages.xml`.
 
-No necesita PHP ni base de datos. Solo necesitas un navegador moderno compatible con JavaScript ES6+.
-
-Para alojarla en un servidor, basta con publicar:
-
-```text
-index.html
-```
-
-### Ejecución local
-
-Puedes abrir `index.html` directamente en el navegador. También puedes utilizar un servidor web estático local, por ejemplo mediante **Live Server** en VS Code.
-
-### Publicación online
-
-Puede desplegarse en servicios compatibles con sitios estáticos, como:
-
-- GitHub Pages.
-- Vercel.
-- Netlify.
-- Cualquier servidor web capaz de servir HTML, CSS y JavaScript.
+### Pasos de Instalación
+1. Clona este repositorio o descarga los archivos en tu servidor web:
+   ```bash
+   git clone https://github.com/tu-usuario/mybb-language-translator.git
+   ```
+2. Asegúrate de colocar `index.php` y `languages.xml` en la misma carpeta raíz de tu servidor web.
+3. Abre tu navegador y accede a la URL correspondiente (ej. `http://localhost/mybb-translator/index.php`).
 
 ---
 
-## 💻 Uso de la aplicación
+## 💻 Uso de la Aplicación
 
-### 1. Seleccionar los idiomas
-
-En la barra lateral selecciona el **Idioma Origen** y el **Idioma Destino**. El botón de intercambio permite invertir ambos idiomas.
-
-### 2. Cargar el paquete de MyBB
-
-Puedes utilizar:
-
-- 📁 **Carpeta Completa**.
-- 🗜️ **Archivo `.ZIP`**.
-- 📄 **Archivos Sueltos**.
-
-### 3. Configurar la traducción
-
-Selecciona el motor de traducción y ajusta el intervalo entre peticiones si es necesario. También puedes definir el nombre del Language Pack y el traductor/autor.
-
-### 4. Traducir
-
-Pulsa **Traducir** para procesar las cadenas automáticamente. También puedes editar manualmente cualquier cadena desde la tabla.
-
-### 5. Revisar
-
-Utiliza los filtros y las estadísticas para localizar cadenas pendientes y revisar las traducciones generadas.
-
-### 6. Exportar
-
-Descarga archivos individuales o genera un `.ZIP` con la estructura preparada para:
-
-```text
-inc/languages/
-```
+1. **Carga los Archivos**: Arrastra o selecciona una carpeta de idiomas de MyBB (por ejemplo, la carpeta `english`), un archivo `.zip` o ficheros `.lang.php` individuales.
+2. **Configura la Traducción**:
+   - Selecciona el **Idioma Origen** y el **Idioma Destino**.
+   - Elige el **Motor de Traducción** preferido.
+   - Ajusta la velocidad/intervalo entre peticiones si experimentas saturación.
+   - Especifica el nombre del Pack y tu nombre como Traductor/Autor.
+3. **Traduce**: Haz clic en **Traducir** para la traducción automática masiva o edita individualmente cualquier celda en la tabla.
+4. **Exporta**: Descarga el resultado comprimido en un archivo `.ZIP` listo para subir a tu directorio MyBB (`inc/languages/`).
 
 ---
 
-## 🛠️ Tecnologías utilizadas
+## 🛠️ Tecnologías Utilizadas
 
-- **HTML5** — estructura de la aplicación.
-- **JavaScript ES6+** — lógica, procesamiento de archivos y comunicación con los servicios de traducción.
-- **Tailwind CSS** — interfaz y diseño responsive.
-- **Font Awesome 6** — iconografía.
-- **JSZip 3.10.1** — lectura y generación de archivos `.ZIP` en el navegador.
-- **Web APIs** — selección y lectura de archivos y gestión de la interfaz.
-
----
-
-## 🔐 Privacidad y funcionamiento
-
-El procesamiento principal de los archivos se realiza en el navegador. El proyecto no necesita una base de datos ni un backend propio.
-
-Ten en cuenta que las cadenas enviadas a un motor de traducción externo pueden salir del navegador hacia el servicio correspondiente. Evita utilizar esta herramienta con contenido que no deba enviarse a servicios externos.
+- **PHP**: Lectura y parsing de configuración XML.
+- **JavaScript (ES6+)**: Procesamiento en cliente, manipulación del DOM, comunicación con APIs de traducción y manipulación de ZIPs.
+- **Tailwind CSS**: Estilizado moderno y responsivo.
+- **FontAwesome 6**: Iconografía.
+- **JSZip**: Generación y lectura de archivos comprimidos `.zip` directamente desde el navegador.
 
 ---
 
-## ⚠️ Consideraciones
+## 📝 Licencia
 
-Los motores de traducción dependen de servicios externos y pueden aplicar límites de uso, cambios de disponibilidad o restricciones de tasa.
-
-El intervalo configurable entre peticiones ayuda a reducir problemas de rate limit, pero **no garantiza** la disponibilidad permanente de ninguno de los servicios.
-
-Antes de instalar un paquete traducido en un foro de producción, revisa las cadenas y comprueba que las variables y etiquetas de MyBB se hayan conservado correctamente.
-
----
-
-## 📜 Licencia
-
-Este proyecto está publicado bajo la **Licencia MIT**. Consulta el archivo `LICENSE` del repositorio para conocer los términos completos.
-
----
-
-## 🔗 Demo
-
-Puedes probar la aplicación desde:
-
-**https://mybb-language-translator.vercel.app/**
-
----
-
-## 👤 Autor
-
-Desarrollado por **MrUriosXD**.
-
-Repositorio:
-
-**https://github.com/MrUriosXD/mybb-language-translator**
+Este proyecto está bajo la Licencia **MIT**. Consulta el archivo `LICENSE` para más detalles.
